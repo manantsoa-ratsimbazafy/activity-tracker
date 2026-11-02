@@ -32,7 +32,7 @@ def get_test_db():
     finally:
         test_db.close()
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def create_test_tables():
     
     Base.metadata.create_all(engine)
@@ -41,7 +41,7 @@ def create_test_tables():
 
     Base.metadata.drop_all(engine)
     
-@pytest.fixture(scope="function")
+@pytest.fixture
 def client(create_test_tables):
     
     app.dependency_overrides[get_db] = get_test_db
@@ -49,3 +49,10 @@ def client(create_test_tables):
     yield TestClient(app)
     
     app.dependency_overrides.clear()
+    
+@pytest.fixture
+def created_activity(client):
+    
+    create_response = client.post("/activities", json={"name": "test"})
+    
+    return create_response.json()["id"]
