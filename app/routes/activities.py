@@ -22,7 +22,7 @@ def create_activity(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Activité déjà présente en base")
+        raise HTTPException(status_code=409, detail="Activity already exists")
     
     db.refresh(new_activity)
     
@@ -36,7 +36,7 @@ def start_activity(
     activity = db.get(Activity, activity_id)
     
     if not activity:
-        raise HTTPException(status_code=404, detail="Activité introuvable")
+        raise HTTPException(status_code=404, detail="Activity not found")
     
     begin = TimeEntry(activity_id=activity_id)
     
@@ -45,7 +45,7 @@ def start_activity(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Une session est déjà en cours")
+        raise HTTPException(status_code=409, detail="A session is already open")
     
     db.refresh(begin)
         
@@ -59,7 +59,7 @@ def stop_activity(
     activity = db.get(Activity, activity_id)
     
     if not activity:
-        raise HTTPException(status_code=404, detail="Activité introuvable")
+        raise HTTPException(status_code=404, detail="Activity not found")
     
     # stmt = statement
     stmt = select(TimeEntry).where(TimeEntry.activity_id==activity_id, TimeEntry.ended_at.is_(None))
@@ -67,7 +67,7 @@ def stop_activity(
     open_entry = db.scalars(stmt).one_or_none()
     
     if open_entry is None:
-        raise HTTPException(status_code=404, detail="Aucune session ouverte pour cette activité")
+        raise HTTPException(status_code=404, detail="No open session for this activity")
     
     open_entry.ended_at=func.now()
     
@@ -97,7 +97,7 @@ def find_activity(
     activity = db.get(Activity, activity_id)
     
     if not activity:
-        raise HTTPException(status_code=404, detail="Activité introuvable")
+        raise HTTPException(status_code=404, detail="Activity not found")
     
     return activity
 
@@ -112,7 +112,7 @@ def get_activity_entries(
     activity = db.get(Activity, activity_id)
     
     if not activity:
-        raise HTTPException(status_code=404, detail="Cette activité n'existe pas")
+        raise HTTPException(status_code=404, detail="Activity not found")
 
     stmt = select(TimeEntry).where(TimeEntry.activity_id==activity_id).order_by(TimeEntry.started_at.desc(), TimeEntry.id.desc()).offset(offset).limit(limit)
     entry_list = db.scalars(stmt).all()

@@ -8,7 +8,7 @@ load_dotenv()
 db_url = os.getenv("DATABASE_URL")
 
 if db_url is None:
-    raise RuntimeError("Il manque une variable DATABASE_URL dans le fichier .env")
+    raise RuntimeError("DATABASE_URL is missing in the .env file")
 engine = create_engine(db_url)
 
 SessionLocal = sessionmaker(autoflush=False, expire_on_commit=False, bind=engine)
