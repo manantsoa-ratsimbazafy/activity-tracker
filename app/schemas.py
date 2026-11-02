@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
+from typing import Optional
 
 
 class ActivityCreate(BaseModel):
@@ -13,3 +14,11 @@ class ActivityRead(BaseModel):
     id: int
     name: str
     created_at: datetime
+    
+class TimeEntryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    activity_id: int
+    started_at: datetime
+    ended_at: Optional[datetime]
