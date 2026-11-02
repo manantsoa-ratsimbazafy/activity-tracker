@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from sqlalchemy import func, select, desc
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import Annotated
@@ -61,7 +61,6 @@ def stop_activity(
     if not activity:
         raise HTTPException(status_code=404, detail="Activity not found")
     
-    # stmt = statement
     stmt = select(TimeEntry).where(TimeEntry.activity_id==activity_id, TimeEntry.ended_at.is_(None))
     
     open_entry = db.scalars(stmt).one_or_none()

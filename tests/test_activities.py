@@ -21,7 +21,7 @@ def test_create_activity_returns_409(client):
     assert response2.status_code == 409
     
 
-@pytest.mark.parametrize("payload", [{"name" : ""}, {"name" : "a"*21}, {"name" : " "*40}, {}, {"name" : 422}], ids=["empty", "too long", "only_spaces", "empty", "invalid"])
+@pytest.mark.parametrize("payload", [{"name" : ""}, {"name" : "a"*21}, {"name" : " "*40}, {}, {"name" : 422}], ids=["empty_name", "too_long", "only_spaces", "missing_name", "wrong_type"])
 def test_create_activity_returns_422(client, payload):
     
     response = client.post("/activities", json=payload)
