@@ -1,13 +1,14 @@
-from dotenv import load_dotenv
 import os
+
+import pytest
+from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import pytest
-from app.main import app
-from app.db import Base, get_db
-from app.models import Activity, TimeEntry
 
+from app.db import Base, get_db
+from app.main import app
+from app.models import Activity, TimeEntry  # noqa: F401
 
 load_dotenv()
 db_url = os.getenv("DATABASE_URL")
@@ -23,36 +24,46 @@ engine = create_engine(db_test_url)
 
 SessionTest = sessionmaker(autoflush=False, expire_on_commit=False, bind=engine)
 
+
 def get_test_db():
-    
+
     test_db = SessionTest()
-    
+
     try:
         yield test_db
     finally:
         test_db.close()
 
+
 @pytest.fixture
 def create_test_tables():
-    
+
     Base.metadata.create_all(engine)
-    
+
     yield
 
     Base.metadata.drop_all(engine)
-    
+
+
 @pytest.fixture
 def client(create_test_tables):
-    
+
     app.dependency_overrides[get_db] = get_test_db
-    
+
     yield TestClient(app)
-    
+
     app.dependency_overrides.clear()
-    
+
+
 @pytest.fixture
-def created_activity(client):
-    
-    create_response = client.post("/activities", json={"name": "test"})
-    
-    return create_response.json()["id"]
+def create_activity(client):
+
+    def _create(name):
+
+        create_response = client.post("/activities", json={"name": name})
+
+        assert create_response.status_code == 201
+
+        return create_response.json()["id"]
+
+    return _create
