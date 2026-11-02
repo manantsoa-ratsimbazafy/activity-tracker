@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import func, select
+from fastapi import APIRouter, HTTPException, Depends, Query
+from sqlalchemy import func, select, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from typing import Annotated
 from app.db import get_db
 from app.schemas import ActivityCreate, ActivityRead, TimeEntryRead
 from app.models import Activity, TimeEntry
@@ -75,3 +76,45 @@ def stop_activity(
     db.refresh(open_entry)
         
     return open_entry
+
+@router.get("/activities", response_model=list[ActivityRead])
+def list_activities(
+    db: Session = Depends(get_db),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10
+):
+    stmt = select(Activity).offset(offset).limit(limit).order_by(Activity.id)
+    
+    activity_list = db.scalars(stmt).all()
+    
+    return activity_list
+
+@router.get("/activities/{activity_id}", response_model=ActivityRead)
+def find_activity(
+    activity_id: int,
+    db: Session = Depends(get_db)
+):
+    activity = db.get(Activity, activity_id)
+    
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activité introuvable")
+    
+    return activity
+
+
+@router.get("/activities/{activity_id}/entries", response_model=list[TimeEntryRead])
+def get_activity_entries(
+    activity_id: int,
+    db: Session = Depends(get_db),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10
+):
+    activity = db.get(Activity, activity_id)
+    
+    if not activity:
+        raise HTTPException(status_code=404, detail="Cette activité n'existe pas")
+
+    stmt = select(TimeEntry).where(TimeEntry.activity_id==activity_id).order_by(TimeEntry.started_at.desc(), TimeEntry.id.desc()).offset(offset).limit(limit)
+    entry_list = db.scalars(stmt).all()
+    
+    return entry_list
