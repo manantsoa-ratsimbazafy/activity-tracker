@@ -16,6 +16,13 @@ SessionLocal = sessionmaker(autoflush=False, expire_on_commit=False, bind=engine
 class Base(DeclarativeBase):
     pass
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 if __name__ == "__main__":
     with engine.connect() as connection:
