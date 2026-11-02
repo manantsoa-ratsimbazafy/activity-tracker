@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from dotenv import load_dotenv
 import os
 
@@ -13,7 +13,8 @@ engine = create_engine(db_url)
 
 SessionLocal = sessionmaker(autoflush=False, expire_on_commit=False, bind=engine)
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 if __name__ == "__main__":
