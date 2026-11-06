@@ -26,7 +26,6 @@ SessionTest = sessionmaker(autoflush=False, expire_on_commit=False, bind=engine)
 
 
 def get_test_db():
-
     test_db = SessionTest()
 
     try:
@@ -37,7 +36,6 @@ def get_test_db():
 
 @pytest.fixture
 def create_test_tables():
-
     Base.metadata.create_all(engine)
 
     yield
@@ -47,7 +45,6 @@ def create_test_tables():
 
 @pytest.fixture
 def client(create_test_tables):
-
     app.dependency_overrides[get_db] = get_test_db
 
     yield TestClient(app)
@@ -59,7 +56,6 @@ def client(create_test_tables):
 def create_activity(client):
 
     def _create(name):
-
         create_response = client.post("/activities", json={"name": name})
 
         assert create_response.status_code == 201
