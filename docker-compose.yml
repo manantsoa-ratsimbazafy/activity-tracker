@@ -1,0 +1,21 @@
+services:
+    db: 
+        image: postgres:16-alpine3.24
+        environment:
+            - POSTGRES_USER=${DATABASE_USER}
+            - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+            - POSTGRES_DB=${DATABASE_NAME}
+        volumes: 
+            - postgres_data:/var/lib/postgresql/data
+
+    api:
+        build: .
+        ports:
+            - "127.0.0.1:8000:8000"
+        environment:
+            - DATABASE_URL=postgresql+psycopg://${DATABASE_USER}:${DATABASE_PASSWORD}@db/${DATABASE_NAME}
+        depends_on: 
+            - db
+
+volumes: 
+    postgres_data:

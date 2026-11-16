@@ -9,6 +9,8 @@ RUN uv sync --locked
 COPY app/ ./app/
 EXPOSE 8000
 
+COPY scripts/ ./scripts/
+
 RUN useradd app
 USER app
 
