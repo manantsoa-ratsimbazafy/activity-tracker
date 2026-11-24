@@ -1,24 +1,20 @@
 import os
 
 import pytest
-from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.db import Base, get_db
+from app.db import Base, build_url, get_db
 from app.main import app
 from app.models import Activity, TimeEntry  # noqa: F401
 
-load_dotenv()
-db_url = os.getenv("DATABASE_URL")
-db_test_url = os.getenv("TEST_DATABASE_URL")
-
-if not db_test_url:
-    raise RuntimeError("TEST_DATABASE_URL is missing in the .env file")
-
-if db_test_url == db_url:
+if (os.getenv("TEST_DATABASE_NAME") or "").strip() == (
+    os.getenv("DATABASE_NAME") or ""
+).strip():
     raise RuntimeError("The test database url can't be the same as the main database")
+
+db_test_url = build_url("TEST_DATABASE_NAME")
 
 engine = create_engine(db_test_url)
 
@@ -57,7 +53,6 @@ def create_activity(client):
 
     def _create(name):
         create_response = client.post("/activities", json={"name": name})
-
         assert create_response.status_code == 201
 
         return create_response.json()["id"]
