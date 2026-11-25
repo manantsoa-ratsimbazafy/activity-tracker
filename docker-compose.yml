@@ -2,9 +2,11 @@ services:
     db: 
         image: postgres:16-alpine3.24
         environment:
-            - POSTGRES_USER=${DATABASE_USER}
-            - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
             - POSTGRES_DB=${DATABASE_NAME}
+            - POSTGRES_USER=${DATABASE_USER}
+            - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+        secrets:
+          - db_password
         volumes: 
             - postgres_data:/var/lib/postgresql/data
 
@@ -13,9 +15,19 @@ services:
         ports:
             - "127.0.0.1:8000:8000"
         environment:
-            - DATABASE_URL=postgresql+psycopg://${DATABASE_USER}:${DATABASE_PASSWORD}@db/${DATABASE_NAME}
+            - DATABASE_HOST=db
+            - DATABASE_NAME=${DATABASE_NAME}
+            - DATABASE_USER=${DATABASE_USER}
+        secrets:
+            - source: db_password
+              target: /app/secrets/db_password.txt
         depends_on: 
             - db
 
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+
 volumes: 
     postgres_data:
+    
