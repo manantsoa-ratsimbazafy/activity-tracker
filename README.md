@@ -11,31 +11,86 @@ by the database itself with a partial unique index, not just by application code
 Python 3.13, FastAPI, SQLAlchemy 2.x, PostgreSQL, Pydantic, uv, pytest, ruff, Docker, Trivy, Semgrep
 
 ## Getting started
-Prerequisites: Python 3.13, uv, PostgreSQL.
+Prerequisites: Python 3.13, uv, PostgreSQL 16 (or Docker, see below).
+
 1. Install dependencies: `uv sync`
-2. Create PostgreSQL databases (both main and test, e.g. `activities_audit` and `activities_test`) with a dedicated non-superuser role assigned to both.
-3. Copy `.env.example` to `.env` and fill in your values (`DATABASE_URL` and `TEST_DATABASE_URL`).
-4. Initialize the database tables on your `DATABASE_URL`: `uv run python scripts/create_tables.py`
-5. Run the API: `uv run uvicorn app.main:app --reload`, then open `/docs`
+2. Create a dedicated PostgreSQL role without superuser rights, and two databases owned by this role:
+   a main one (e.g. `activities_audit`) and a test one (e.g. `activities_test`).
+   Use two different databases: the test suite drops all tables when it finishes.
+
+   On Ubuntu, open the PostgreSQL shell as the administrator with `sudo -u postgres psql`, then run:
+   If you are not on Ubuntu, run the same commands as a PostgreSQL superuser (for example, on macOS with Homebrew, the `postgres` user or your own administrator role).
+   
+   ```sql
+   CREATE ROLE activity_user WITH LOGIN PASSWORD 'your_password';
+   CREATE DATABASE activities_audit OWNER activity_user;
+   CREATE DATABASE activities_test OWNER activity_user;
+   ```
+
+   Replace `your_password` with a strong password. To avoid storing it in your shell history,
+   you can run `CREATE ROLE activity_user WITH LOGIN;` and then `\password activity_user` instead.
+   Leave the shell with `\q`.
+3. Store the role's password in a file: create `secrets/db_password.txt` containing only the password, on a single line.
+   This file is ignored by Git. Never commit it, and never put the password in `.env`.
+4. Copy `.env.example` to `.env` and fill in the values:
+   - `DATABASE_HOST` (`localhost` for a local PostgreSQL)
+   - `DATABASE_USER` (the role created in step 2)
+   - `DATABASE_NAME` (the main database)
+   - `TEST_DATABASE_NAME` (the test database)
+5. Initialize the database tables: `uv run python -m scripts.create_tables`
+6. Run the API: `uv run uvicorn app.main:app --reload`, then open `/docs`
 
 ## Docker
-1. Ensure your `.env` file uses `db` as the hostname in `DATABASE_URL` (e.g. `postgresql://user:pass@db:5432/db_name`) and that values are **not** enclosed in quotes.
-2. Build and start the containers: `docker compose up -d --build`
-   PostgreSQL is not exposed on the host machine. The API is published on `http://127.0.0.1:8000` only.
-3. Initialize the database tables inside the API container: `docker compose exec api python -m scripts.create_tables`
+Docker Compose starts PostgreSQL and the API together. PostgreSQL is not exposed on the host
+machine, and the API is published on `http://127.0.0.1:8000` only.
 
-If you already have a data volume from an earlier run and the database password has changed, the database will refuse the connection. Remove the volume with `docker compose down -v` (this deletes all data), then start again.
+Prerequisites: Docker with Compose, and a `.env` file and `secrets/db_password.txt` as described above.
+Compose reads `DATABASE_NAME` and `DATABASE_USER` from your `.env` file, so keep those values filled in.
+The PostgreSQL container creates the role and the main database on its first start, using these values
+and the password file. You do not need to create them by hand.
+
+1. Build and start the containers: `docker compose up -d --build`
+2. Initialize the database tables inside the API container: `docker compose exec api python -m scripts.create_tables`
+3. Check that the API responds: `curl http://127.0.0.1:8000/health`
+
+The database password is applied when the data volume is created for the first time. If you change
+the password afterwards, the database will refuse the connection. Remove the volume with
+`docker compose down -v` (this deletes all data), then start again.
+
+### Running a second copy of the project
+Docker Compose names its containers and volumes after the project folder. Two copies in folders with
+the same name share the same volume, and the second copy may fail to authenticate.
+To run a second copy alongside the first, give it its own project name with the `-p` option, placed
+before the subcommand (for example `docker compose -p activity-tracker-clone up -d --build`). Use the
+same `-p` value for every later command on that copy, including `down -v`.
 
 ## Tests
-Tests run against a separate database (`TEST_DATABASE_URL`). They refuse to
-run if it equals `DATABASE_URL`. Run: `uv run pytest`
+Tests run against the database named in `TEST_DATABASE_NAME`, on your local PostgreSQL (see Getting started).
+They refuse to run if it equals `DATABASE_NAME`, so your main data cannot be dropped by mistake.
+
+Run: `uv run pytest`
 
 ## Security
 
-### Container image (Trivy)
-Image scanned with Trivy 0.76.1 on 2026-11-18 (`trivy image --ignore-unfixed`): no known fixable vulnerabilities in the base image or in the Python dependencies installed in the project virtualenv. The image runs as a non-root user, and the Python interpreter's pip has been removed from the final image.
+### Secrets
+The database password is stored in `secrets/db_password.txt`, which is ignored by Git. It is never
+read from `.env` or passed as an environment variable. In Docker, it is mounted as a secret file, so
+it does not appear in `docker inspect` or `docker compose config`.
 
-Some Debian base-image vulnerabilities have no upstream fix yet and are not reported by this filter.
+Limitations:
+- The password is still stored in plain text on the development machine.
+- Docker keeps the password in the data volume after the first start. There is no rotation mechanism yet.
+- In Docker, the role from `POSTGRES_USER` is created as a superuser by the official PostgreSQL image.
+  The non-superuser recommendation above applies to the local setup.
+
+### Container image (Trivy)
+Image scanned on 2026-11-25 with Trivy 0.76.2 (`trivy image --ignore-unfixed activity-tracker-api`), on a Debian 13.8 base image:
+- Base image: 0 fixable vulnerabilities.
+- Python dependencies installed in the project virtualenv: 0 findings.
+- `uv` binaries: 0 findings.
+
+The `--ignore-unfixed` flag hides vulnerabilities that have no upstream fix yet, so they are not reported here.
+The image runs as a non-root user, and the Python interpreter's pip has been removed from the final image.
 
 ### Static analysis (Semgrep)
 Scanned on 2026-11-20 with Semgrep 1.186.0 (`semgrep ci`, Pro engine, free account):
