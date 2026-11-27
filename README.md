@@ -84,12 +84,17 @@ Limitations:
   The non-superuser recommendation above applies to the local setup.
 
 ### Container image (Trivy)
-Image scanned on 2026-11-25 with Trivy 0.76.2 (`trivy image --ignore-unfixed activity-tracker-api`), on a Debian 13.8 base image:
+
+Image `activity-tracker-api` scanned on 2026-11-27 with Trivy 0.76.2 (`trivy image --ignore-unfixed activity-tracker-api`), after a rebuild with `--no-cache --pull`, on a Debian 13.8 base image:
+
 - Base image: 0 fixable vulnerabilities.
 - Python dependencies installed in the project virtualenv: 0 findings.
 - `uv` binaries: 0 findings.
 
-The `--ignore-unfixed` flag hides vulnerabilities that have no upstream fix yet, so they are not reported here.
+A full scan without the flag (`trivy image activity-tracker-api`, same day) reports 222 findings in the Debian base image (53 HIGH, 0 CRITICAL). None of them has an upstream fix yet. The Python dependencies still report 0 findings.
+
+The `--ignore-unfixed` flag hides vulnerabilities that have no upstream fix yet, so they are not counted in the first list. The full scan shows them for transparency. These numbers change as the vulnerability database and the Debian packages are updated, so the scan is repeated each time the image is rebuilt.
+
 The image runs as a non-root user, and the Python interpreter's pip has been removed from the final image.
 
 ### Static analysis (Semgrep)
